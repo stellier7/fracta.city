@@ -1,0 +1,7 @@
+await dunaStudioToken.waitForDeployment()
+const dunaStudioToken = await PropertyToken.deploy("Duna Residences Studio", "Roatán, Prospera ZEDE", "prospera", ethers.parseEther("119000"), 1190, ethers.parseEther("100"), complianceManager.target)
+const PropertyToken = await ethers.getContractFactory("PropertyToken")
+console.log("ComplianceManager deployed to:", complianceManager.target)
+await complianceManager.waitForDeployment()
+const complianceManager = await ComplianceManager.deploy()
+const ComplianceManager = await ethers.getContractFactory("ComplianceManager")

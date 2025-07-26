@@ -1,0 +1,38 @@
+{
+  "name": "fracta-contracts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "test:gas": "REPORT_GAS=true npx hardhat test",
+    "deploy:local": "npx hardhat ignition deploy ./ignition/modules/FractaCityDeploy.ts --network hardhat",
+    "deploy:base-sepolia": "npx hardhat ignition deploy ./ignition/modules/FractaCityDeploy.ts --network baseSepolia",
+    "deploy:base": "npx hardhat ignition deploy ./ignition/modules/FractaCityDeploy.ts --network base",
+    "verify:base-sepolia": "npx hardhat verify --network baseSepolia",
+    "verify:base": "npx hardhat verify --network base",
+    "node": "npx hardhat node",
+    "clean": "npx hardhat clean"
+  },
+  "keywords": [
+    "fracta",
+    "real-estate",
+    "tokenization",
+    "blockchain",
+    "defi",
+    "smart-contracts",
+    "hardhat",
+    "base"
+  ],
+  "author": "Fracta.city",
+  "license": "MIT",
+  "description": "Smart contracts for Fracta.city - Tokenized Real Estate Platform",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.26.1"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.0",
+    "dotenv": "^16.4.8"
+  }
+}

@@ -1,0 +1,300 @@
+# Fracta.city - AI Agent Build Instructions
+
+## PHASE 1: FRONTEND FOUNDATION (Start Here)
+
+### Step 1: Project Initialization
+```bash
+npx create-next-app@latest fracta-frontend --typescript --tailwind --eslint --app
+cd fracta-frontend
+npm install wagmi viem rainbowkit lucide-react @rainbow-me/rainbowkit
+```
+
+### Step 2: Environment Setup
+Create `.env.local`:
+```
+NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_project_id
+NEXT_PUBLIC_ALCHEMY_ID=your_alchemy_key
+NEXT_PUBLIC_CHAIN_ID=8453
+```
+
+### Step 3: Core Configuration Files
+
+**app/providers.tsx**
+```typescript
+'use client';
+import { WagmiConfig, createConfig } from 'wagmi';
+import { RainbowKitProvider, getDefaultWallets } from '@rainbow-me/rainbowkit';
+import { base, baseSepolia } from 'wagmi/chains';
+import { publicProvider } from 'wagmi/providers/public';
+
+// Configure wallet connection and blockchain networks
+// Support Base (main) and Base Sepolia (testnet)
+```
+
+**tailwind.config.js additions**
+```javascript
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        'fracta-blue': '#0066CC',
+        'fracta-green': '#00CC66',
+        'prospera-gold': '#FFD700',
+      }
+    }
+  }
+}
+```
+
+### Step 4: Component Structure
+Create these components with specific functionality:
+
+**components/Hero.tsx**
+- Background: Prospera cityscape or modern building
+- Headline: "Enter the Future of Real Estate in Prospera"
+- Two CTAs: "Get Started" and "View Listings"
+- Wallet connect button in top right
+- Responsive design (mobile-first)
+
+**components/PropertyCard.tsx**
+Interface:
+```typescript
+interface PropertyCardProps {
+  id: string;
+  name: string;
+  location: string;
+  jurisdiction: 'prospera' | 'international';
+  tokenPrice: number;
+  expectedYield: number;
+  image: string;
+  kycRequired: 'prospera-permit' | 'international-kyc';
+  status: 'live' | 'coming-soon' | 'sold-out';
+}
+```
+- Card design with hover effects
+- Status badges (Live/Coming Soon)
+- KYC requirement indicator
+- "Join Sale" button
+
+**components/Features.tsx**
+Feature list:
+- ✅ Invest from $100
+- ✅ Earn real ROI (6–12%)
+- ✅ Blockchain transparency
+- ✅ Fractional ownership
+- ✅ Prospera-regulated assets
+- ✅ Liquid secondary market
+
+**components/KYCBanner.tsx**
+- Show different messages based on property jurisdiction
+- "Prospera Residents Only - Enter Your Permit Number"
+- "Open to Global Investors - Quick Verification Required"
+
+### Step 5: Mock Data
+Create `data/mockProperties.ts`:
+```typescript
+export const mockProperties = [
+  {
+    id: '1',
+    name: 'Apt 801, Duna Residences',
+    location: 'Roatán, Prospera ZEDE',
+    jurisdiction: 'prospera',
+    tokenPrice: 100,
+    expectedYield: 8.5,
+    image: '/images/property1.jpg',
+    kycRequired: 'prospera-permit',
+    status: 'live'
+  },
+  {
+    id: '2', 
+    name: 'Pristine Bay Beach Club Villa',
+    location: 'Roatán, Prospera ZEDE',
+    jurisdiction: 'prospera',
+    tokenPrice: 175,
+    expectedYield: 6.2,
+    image: '/images/property2.jpg',
+    kycRequired: 'international-kyc',
+    status: 'coming-soon'
+  }
+];
+```
+
+### Step 6: Page Structure
+
+**app/page.tsx (Landing Page)**
+```typescript
+import Hero from '@/components/Hero';
+import Features from '@/components/Features';
+import PropertyCard from '@/components/PropertyCard';
+import { mockProperties } from '@/data/mockProperties';
+
+export default function Home() {
+  return (
+    <>
+      <Hero />
+      <Features />
+      <section className="property-listings">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {mockProperties.map(property => (
+            <PropertyCard key={property.id} {...property} />
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+```
+
+**app/listings/page.tsx**
+- Full property listings page
+- Filter by jurisdiction (Prospera/International)
+- Search functionality
+- Pagination
+
+### Step 7: Styling Guidelines
+- Use Tailwind utility classes only
+- Dark mode support
+- Modern gradients and glassmorphism effects
+- Smooth animations and hover states
+- Mobile-first responsive design
+
+---
+
+## PHASE 2: BACKEND & DATABASE (After Phase 1 Complete)
+
+### Step 1: Backend Setup
+```bash
+mkdir fracta-backend
+cd fracta-backend
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install fastapi uvicorn sqlalchemy alembic psycopg2-binary redis python-jose[cryptography]
+```
+
+### Step 2: Database Schema Files
+Create `alembic/versions/001_initial_schema.py`:
+```sql
+-- Users table with KYC fields
+-- Properties table with jurisdiction
+-- Investments tracking table
+-- KYC records table
+-- (Full SQL from main spec)
+```
+
+### Step 3: FastAPI Application Structure
+```
+fracta-backend/
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── database.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── user.py
+│   │   ├── property.py
+│   │   └── kyc.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── auth.py
+│   │   ├── properties.py
+│   │   └── kyc.py
+│   └── services/
+│       ├── __init__.py
+│       ├── prospera_kyc.py
+│       └── blockchain.py
+```
+
+### Step 4: Key API Endpoints
+```python
+# API endpoints to implement:
+POST /api/auth/wallet-login
+GET /api/properties
+POST /api/properties (admin only)
+POST /api/kyc/prospera-verify
+POST /api/kyc/international-verify
+GET /api/user/portfolio
+POST /api/investments/purchase
+```
+
+---
+
+## PHASE 3: SMART CONTRACTS (After Backend Complete)
+
+### Step 1: Hardhat Setup
+```bash
+mkdir fracta-contracts
+cd fracta-contracts
+npm init -y
+npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox
+npm install @openzeppelin/contracts
+npx hardhat init
+```
+
+### Step 2: Contract Implementation Order
+1. `ComplianceManager.sol` - KYC and transfer restrictions
+2. `PropertyToken.sol` - ERC-1404 with compliance
+3. `TokenSale.sol` - Property token sales
+4. `RevenueDistribution.sol` - Dividend payments
+
+### Step 3: Deployment Scripts
+- Deploy to Base Sepolia (testnet)
+- Deploy to Base (mainnet)
+- Verify contracts on Basescan
+
+---
+
+## PHASE 4: INTEGRATION & TESTING
+
+### Step 1: Frontend-Backend Integration
+- Connect real API endpoints
+- Replace mock data with real data
+- Add error handling and loading states
+
+### Step 2: Blockchain Integration
+- Connect to deployed smart contracts
+- Implement token purchase flow
+- Add transaction status tracking
+
+### Step 3: Testing & Deployment
+- Unit tests for all components
+- Integration tests for API endpoints
+- Smart contract tests
+- Deploy to Vercel (frontend) and Railway (backend)
+
+---
+
+## BUILD CHECKPOINTS
+
+After each phase, verify:
+- [ ] All components render correctly
+- [ ] Responsive design works on mobile
+- [ ] Wallet connection functions
+- [ ] No console errors
+- [ ] Code follows TypeScript best practices
+
+## ENVIRONMENT VARIABLES NEEDED
+
+**Frontend (.env.local):**
+```
+NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=
+NEXT_PUBLIC_ALCHEMY_ID=
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+**Backend (.env):**
+```
+DATABASE_URL=postgresql://user:pass@localhost/fracta
+REDIS_URL=redis://localhost:6379
+JWT_SECRET_KEY=your-secret-key
+PROSPERA_API_KEY=prospera-api-key
+```
+
+## RECOMMENDED BUILD ORDER
+
+1. **Start with Phase 1** - Get the frontend working with mock data
+2. **Test thoroughly** - Make sure wallet connection and UI work perfectly
+3. **Move to Phase 2** - Only after frontend is solid
+4. **Integrate incrementally** - Connect one feature at a time
+5. **Deploy early and often** - Use Vercel for easy frontend deployment
+
+This breaks down the build into manageable chunks that an AI agent can handle sequentially.
