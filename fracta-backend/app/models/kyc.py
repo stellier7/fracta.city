@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, Text, JSON, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -130,3 +130,32 @@ class Investment(Base):
     
     def __repr__(self):
         return f"<Investment(user_id={self.user_id}, property_id={self.property_id}, tokens={self.tokens_purchased})>" 
+
+class Token(Base):
+    __tablename__ = "tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token_number = Column(Integer, nullable=False)  # Token #1, #2, etc.
+    property_id = Column(Integer, ForeignKey("properties.id"), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    # Token Details
+    mint_price = Column(Numeric(10, 2), nullable=False)  # Price when minted
+    current_price = Column(Numeric(10, 2), nullable=True)  # Current listing price (if for sale)
+    is_for_sale = Column(Boolean, default=False)
+    
+    # Blockchain Information
+    token_id = Column(String(100), nullable=True)  # Blockchain token ID
+    contract_address = Column(String(42), nullable=True)
+    
+    # Timestamps
+    minted_at = Column(DateTime(timezone=True), server_default=func.now())
+    listed_at = Column(DateTime(timezone=True), nullable=True)
+    
+    def __repr__(self):
+        return f"<Token(token_number={self.token_number}, property_id={self.property_id}, owner_id={self.owner_id})>"
+    
+    def get_price_change_percentage(self):
+        if not self.current_price or not self.mint_price:
+            return 0
+        return ((self.current_price - self.mint_price) / self.mint_price) * 100 

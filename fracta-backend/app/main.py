@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from app.api import auth, properties, kyc
+from app.api import auth, properties, kyc, transactions
 from app.database import create_database
 from app.services.blockchain import blockchain_service
 
@@ -40,6 +40,7 @@ API_V1_STR = os.getenv("API_V1_STR", "/api/v1")
 app.include_router(auth.router, prefix=f"{API_V1_STR}/auth", tags=["authentication"])
 app.include_router(properties.router, prefix=f"{API_V1_STR}/properties", tags=["properties"])
 app.include_router(kyc.router, prefix=f"{API_V1_STR}/kyc", tags=["kyc"])
+app.include_router(transactions.router, prefix=f"{API_V1_STR}/transactions", tags=["transactions"])
 
 @app.get("/")
 async def root():
