@@ -5,6 +5,7 @@ from web3 import Web3
 from web3.exceptions import ContractLogicError
 from dotenv import load_dotenv
 import logging
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -82,6 +83,26 @@ class BlockchainService:
                 "name": "kycApproved",
                 "outputs": [{"name": "", "type": "bool"}],
                 "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"name": "user", "type": "address"},
+                    {"name": "jurisdiction", "type": "string"},
+                    {"name": "expiryTimestamp", "type": "uint256"}
+                ],
+                "name": "approveKYC",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"name": "user", "type": "address"}
+                ],
+                "name": "revokeKYC",
+                "outputs": [],
+                "stateMutability": "nonpayable",
                 "type": "function"
             }
         ]
@@ -317,6 +338,69 @@ class BlockchainService:
                 "compliance_manager": self.compliance_manager_address,
                 "duna_studio_token": self.duna_studio_token_address
             }
+
+    async def approve_kyc_on_blockchain(self, wallet_address: str, jurisdiction: str = "prospera", permit_id: str = "TEST123") -> bool:
+        """Approve KYC on blockchain for testing purposes"""
+        try:
+            address = self.w3.to_checksum_address(wallet_address)
+            
+            # Set expiry to 1 year from now
+            expiry_timestamp = int((datetime.now() + timedelta(days=365)).timestamp())
+            
+            # Build transaction
+            transaction = self.compliance_manager.functions.approveKYC(
+                address,
+                jurisdiction,
+                expiry_timestamp
+            ).build_transaction({
+                'from': os.getenv('ADMIN_WALLET_ADDRESS'),  # Need admin wallet
+                'gas': 200000,
+                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(os.getenv('ADMIN_WALLET_ADDRESS'))
+            })
+            
+            # Sign and send transaction (requires private key)
+            private_key = os.getenv('ADMIN_PRIVATE_KEY')
+            if not private_key:
+                logger.error("Admin private key not configured")
+                return False
+                
+            signed_txn = self.w3.eth.account.sign_transaction(transaction, private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            
+            # Wait for transaction receipt
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            logger.info(f"KYC approved on blockchain for {wallet_address}. Tx: {receipt.transactionHash.hex()}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error approving KYC on blockchain: {e}")
+            return False
+    
+    async def sync_kyc_from_backend(self, wallet_address: str, kyc_record) -> bool:
+        """Sync KYC approval from backend to blockchain"""
+        try:
+            # Check if KYC is already approved on blockchain
+            current_status = await self.check_user_kyc_status(wallet_address)
+            if current_status["kyc_valid"]:
+                logger.info(f"KYC already approved on blockchain for {wallet_address}")
+                return True
+            
+            # Only sync if backend KYC is approved
+            if kyc_record.status != "approved":
+                logger.warning(f"Backend KYC not approved for {wallet_address}")
+                return False
+            
+            # Approve on blockchain
+            jurisdiction = kyc_record.jurisdiction or "prospera"
+            permit_id = kyc_record.prospera_permit_id or "BACKEND_APPROVED"
+            
+            return await self.approve_kyc_on_blockchain(wallet_address, jurisdiction, permit_id)
+            
+        except Exception as e:
+            logger.error(f"Error syncing KYC from backend: {e}")
+            return False
 
 # Global instance
 blockchain_service = BlockchainService() 

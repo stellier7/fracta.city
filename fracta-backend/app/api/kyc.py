@@ -476,6 +476,81 @@ async def approve_test_kyc(
     
     return {"message": "KYC approved successfully", "kyc_id": kyc_id}
 
+@router.post("/test-sync-to-blockchain")
+async def sync_kyc_to_blockchain(
+    wallet_address: str,
+    db: Session = Depends(get_db)
+):
+    """Sync KYC approval from backend to blockchain (test endpoint)"""
+    
+    # Get the latest approved KYC record for the user
+    kyc_record = db.query(KYCRecord).filter(
+        KYCRecord.user_id == 1,  # Mock user ID
+        KYCRecord.status == "approved"
+    ).order_by(KYCRecord.approved_at.desc()).first()
+    
+    if not kyc_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No approved KYC record found"
+        )
+    
+    # Import blockchain service
+    from app.services.blockchain import blockchain_service
+    
+    # Sync to blockchain
+    success = await blockchain_service.sync_kyc_from_backend(wallet_address, kyc_record)
+    
+    if success:
+        return {
+            "message": "KYC synced to blockchain successfully",
+            "wallet_address": wallet_address,
+            "kyc_id": kyc_record.id
+        }
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to sync KYC to blockchain"
+        )
+
+@router.post("/test-approve-blockchain-kyc")
+async def approve_blockchain_kyc_test(
+    wallet_address: str = "0xdf7dc773d20827e4796cbeaff5113b4f9514be34"
+):
+    """Approve KYC on blockchain for testing (no auth required)"""
+    
+    # Import blockchain service
+    from app.services.blockchain import blockchain_service
+    
+    # For testing, we'll mock the approval since we don't have admin credentials
+    # In production, this would require admin wallet credentials
+    
+    try:
+        # Check current status
+        current_status = await blockchain_service.check_user_kyc_status(wallet_address)
+        
+        if current_status["kyc_valid"]:
+            return {
+                "message": "KYC already approved on blockchain",
+                "wallet_address": wallet_address,
+                "status": current_status
+            }
+        
+        # For now, return a message explaining the issue
+        return {
+            "message": "KYC approval requires admin wallet credentials",
+            "wallet_address": wallet_address,
+            "current_status": current_status,
+            "note": "To fix this, you need to either: 1) Configure admin wallet credentials, or 2) Manually approve KYC on the contract"
+        }
+        
+    except Exception as e:
+        return {
+            "message": "Error checking KYC status",
+            "wallet_address": wallet_address,
+            "error": str(e)
+        }
+
 @router.put("/test-admin/{kyc_id}/reject")
 async def reject_test_kyc(
     kyc_id: int,
