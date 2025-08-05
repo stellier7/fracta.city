@@ -130,58 +130,70 @@ async def submit_test_prospera_verification(
 ):
     """Submit Prospera permit for verification (test endpoint without auth)"""
     
-    # For testing, create a mock user ID
-    mock_user_id = 1
-    
-    # Check if user already has approved KYC
-    existing_kyc = db.query(KYCRecord).filter(
-        KYCRecord.user_id == mock_user_id,
-        KYCRecord.status == "approved"
-    ).first()
-    
-    if existing_kyc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User already has approved KYC verification"
-        )
-    
-    # Parse date
     try:
-        dob = datetime.strptime(kyc_data.date_of_birth, "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid date format. Use YYYY-MM-DD"
+        # For testing, create a mock user ID
+        mock_user_id = 1
+        
+        # Check if user already has approved KYC
+        existing_kyc = db.query(KYCRecord).filter(
+            KYCRecord.user_id == mock_user_id,
+            KYCRecord.status == "approved"
+        ).first()
+        
+        if existing_kyc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User already has approved KYC verification"
+            )
+        
+        # Parse date
+        try:
+            dob = datetime.strptime(kyc_data.date_of_birth, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date format. Use YYYY-MM-DD"
+            )
+        
+        # Create KYC record
+        kyc_record = KYCRecord(
+            user_id=mock_user_id,
+            kyc_type="prospera-permit",
+            jurisdiction="prospera",
+            prospera_permit_id=kyc_data.prospera_permit_id,
+            prospera_permit_type=kyc_data.prospera_permit_type,
+            first_name=kyc_data.first_name,
+            last_name=kyc_data.last_name,
+            date_of_birth=dob,
+            nationality=kyc_data.nationality,
+            verification_method="manual",
+            compliance_status="pending",
+            status="pending"
         )
-    
-    # Create KYC record
-    kyc_record = KYCRecord(
-        user_id=mock_user_id,
-        kyc_type="prospera-permit",
-        jurisdiction="prospera",
-        prospera_permit_id=kyc_data.prospera_permit_id,
-        prospera_permit_type=kyc_data.prospera_permit_type,
-        first_name=kyc_data.first_name,
-        last_name=kyc_data.last_name,
-        date_of_birth=dob,
-        nationality=kyc_data.nationality,
-        verification_method="manual",
-        compliance_status="pending"
-    )
-    
-    # Set expiry (Prospera permits typically valid for 1 year)
-    kyc_record.expires_at = datetime.utcnow() + timedelta(days=365)
-    kyc_record.annual_review_due = datetime.utcnow() + timedelta(days=365)
-    
-    db.add(kyc_record)
-    
-    # For testing, we'll skip updating user status since we don't have a real user
-    # In production, you'd update the user's KYC status here
-    
-    db.commit()
-    db.refresh(kyc_record)
-    
-    return KYCResponse.from_orm(kyc_record)
+        
+        # Set expiry (Prospera permits typically valid for 1 year)
+        kyc_record.expires_at = datetime.utcnow() + timedelta(days=365)
+        kyc_record.annual_review_due = datetime.utcnow() + timedelta(days=365)
+        
+        db.add(kyc_record)
+        db.commit()
+        db.refresh(kyc_record)
+        
+        # Log successful submission
+        print(f"KYC submitted successfully: {kyc_record.id}")
+        
+        return KYCResponse.from_orm(kyc_record)
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Log the error and return a generic error message
+        print(f"Error submitting KYC: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to submit KYC verification. Please try again."
+        )
 
 @router.post("/prospera-verify", response_model=KYCResponse)
 async def submit_prospera_verification(
@@ -649,3 +661,59 @@ async def reject_kyc(
     db.commit()
     
     return {"message": "KYC rejected", "kyc_id": kyc_id, "reason": reason} 
+
+@router.post("/test-auto-approve-kyc")
+async def auto_approve_test_kyc(
+    wallet_address: str = "0xdf7dc773d20827e4796cbeaff5113b4f9514be34",
+    db: Session = Depends(get_db)
+):
+    """Automatically approve KYC for testing purposes"""
+    
+    try:
+        # Get the latest pending KYC record
+        latest_kyc = db.query(KYCRecord).filter(
+            KYCRecord.user_id == 1,  # Mock user ID
+            KYCRecord.status == "pending"
+        ).order_by(KYCRecord.submitted_at.desc()).first()
+        
+        if not latest_kyc:
+            return {
+                "message": "No pending KYC found",
+                "wallet_address": wallet_address
+            }
+        
+        # Approve the KYC record
+        latest_kyc.status = "approved"
+        latest_kyc.compliance_status = "compliant"
+        latest_kyc.reviewed_at = datetime.utcnow()
+        latest_kyc.approved_at = datetime.utcnow()
+        latest_kyc.verified_by = "auto-approve"
+        
+        # Update user status if user exists
+        user = db.query(User).filter(User.id == latest_kyc.user_id).first()
+        if user:
+            user.kyc_status = "approved"
+            user.is_verified = True
+            user.kyc_jurisdiction = latest_kyc.jurisdiction
+            if latest_kyc.prospera_permit_id:
+                user.prospera_permit_id = latest_kyc.prospera_permit_id
+        
+        db.commit()
+        
+        # Try to sync to blockchain
+        from app.services.blockchain import blockchain_service
+        blockchain_success = await blockchain_service.sync_kyc_from_backend(wallet_address, latest_kyc)
+        
+        return {
+            "message": "KYC auto-approved successfully",
+            "kyc_id": latest_kyc.id,
+            "wallet_address": wallet_address,
+            "blockchain_synced": blockchain_success
+        }
+        
+    except Exception as e:
+        print(f"Error auto-approving KYC: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to auto-approve KYC: {str(e)}"
+        ) 

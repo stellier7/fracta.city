@@ -55,12 +55,27 @@ export default function ProsperaKYCPage() {
               <p className="text-gray-300 mb-8">
                 Your Prospera permit verification has been submitted. You'll receive an update within 24 hours.
               </p>
-              <Link 
-                href="/marketplace"
-                className="inline-flex items-center bg-gradient-primary hover:shadow-button text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-smooth transform hover:-translate-y-1"
-              >
-                Browse Properties
-              </Link>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link 
+                  href="/marketplace"
+                  className="inline-flex items-center bg-gradient-primary hover:shadow-button text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-smooth transform hover:-translate-y-1"
+                >
+                  Browse Properties
+                </Link>
+                <button
+                  onClick={async () => {
+                    try {
+                      await KYCService.autoApproveKYC();
+                      alert('KYC auto-approved successfully! You can now make transactions.');
+                    } catch (error) {
+                      alert('Failed to auto-approve KYC: ' + (error as Error).message);
+                    }
+                  }}
+                  className="inline-flex items-center bg-gradient-secondary hover:shadow-button text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-smooth transform hover:-translate-y-1"
+                >
+                  Auto-Approve KYC (Test)
+                </button>
+              </div>
             </div>
           </div>
         </div>

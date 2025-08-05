@@ -60,27 +60,40 @@ export class KYCService {
   static async submitProsperaKYC(data: ProsperaKYCData): Promise<any> {
     console.log('Submitting Prospera KYC:', data);
     
-    const response = await fetch(`${API_BASE_URL}/kyc/test-prospera-verify`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prospera_permit_id: data.prospera_permit_id,
-        prospera_permit_type: data.prospera_permit_type,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        date_of_birth: data.date_of_birth,
-        nationality: data.nationality
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`KYC submission failed: ${response.statusText} - ${errorText}`);
+    try {
+      const response = await fetch(`${API_BASE_URL}/kyc/test-prospera-verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prospera_permit_id: data.prospera_permit_id,
+          prospera_permit_type: data.prospera_permit_type,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          date_of_birth: data.date_of_birth,
+          nationality: data.nationality
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('KYC submission failed:', response.status, errorText);
+        throw new Error(`KYC submission failed: ${response.statusText} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('KYC submission successful:', result);
+      return result;
+      
+    } catch (error) {
+      console.error('KYC submission error:', error);
+      if (error instanceof Error) {
+        throw new Error(`KYC submission failed: ${error.message}`);
+      } else {
+        throw new Error('KYC submission failed: Unknown error occurred');
+      }
     }
-    
-    return response.json();
   }
 
   static async submitInternationalKYC(data: InternationalKYCData): Promise<any> {
@@ -217,5 +230,37 @@ export class KYCService {
     }
     
     return response.json();
+  }
+
+  static async autoApproveKYC(walletAddress: string = "0xdf7dc773d20827e4796cbeaff5113b4f9514be34"): Promise<any> {
+    console.log('Auto-approving KYC for wallet:', walletAddress);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/kyc/test-auto-approve-kyc`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ wallet_address: walletAddress }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('KYC auto-approval failed:', response.status, errorText);
+        throw new Error(`KYC auto-approval failed: ${response.statusText} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('KYC auto-approval successful:', result);
+      return result;
+      
+    } catch (error) {
+      console.error('KYC auto-approval error:', error);
+      if (error instanceof Error) {
+        throw new Error(`KYC auto-approval failed: ${error.message}`);
+      } else {
+        throw new Error('KYC auto-approval failed: Unknown error occurred');
+      }
+    }
   }
 } 
