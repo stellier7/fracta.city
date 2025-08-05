@@ -79,6 +79,19 @@ class KYCStatusResponse(BaseModel):
     requires_renewal: bool
     next_steps: List[str]
 
+@router.get("/test")
+async def test_kyc_endpoint():
+    """Simple test endpoint to verify KYC API is working"""
+    return {
+        "message": "KYC API is working",
+        "timestamp": datetime.utcnow().isoformat(),
+        "endpoints": [
+            "/kyc/test-prospera-verify",
+            "/kyc/test-auto-approve-kyc",
+            "/kyc/status"
+        ]
+    }
+
 @router.get("/status", response_model=KYCStatusResponse)
 async def get_kyc_status(
     current_user: User = Depends(get_current_user),
